@@ -26,6 +26,7 @@ async function run() {
   try {
     const categories = client.db("Gamicon").collection("categories");
     const userCollection = client.db("Gamicon").collection("users");
+    const productCollection = client.db("Gamicon").collection("products");
 
     // Get categories data
     app.get("/categories", async (req, res) => {
@@ -52,6 +53,20 @@ async function run() {
       const email = req.query.email;
       const query = { email: email };
       const result = await userCollection.findOne(query);
+      res.send(result);
+    });
+
+    // Add product data to database
+    app.post("/products", async (req, res) => {
+      const product = req.body;
+      const result = await productCollection.insertOne(product);
+      res.send(result);
+    });
+
+    // Get products data
+    app.get("/products", async (req, res) => {
+      const query = {};
+      const result = await productCollection.find(query).toArray();
       res.send(result);
     });
   } finally {
