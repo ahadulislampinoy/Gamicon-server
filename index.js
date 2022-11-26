@@ -152,6 +152,14 @@ async function run() {
       const result = await bookingCollection.insertOne(booking);
       res.send(result);
     });
+
+    // Get a specific user bookings data
+    app.get("/bookings", async (req, res) => {
+      const email = req.query.email;
+      const filter = { buyerEmail: email };
+      const result = await bookingCollection.find(filter).toArray();
+      res.send(result);
+    });
   } finally {
   }
 }
