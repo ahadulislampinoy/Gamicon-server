@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const app = express();
 const cors = require("cors");
@@ -27,6 +27,7 @@ async function run() {
     const categories = client.db("Gamicon").collection("categories");
     const userCollection = client.db("Gamicon").collection("users");
     const productCollection = client.db("Gamicon").collection("products");
+    const bookingCollection = client.db("Gamicon").collection("bookings");
 
     // Get categories data
     app.get("/categories", async (req, res) => {
@@ -63,10 +64,92 @@ async function run() {
       res.send(result);
     });
 
-    // Get products data
+    // Get a specific user products data
     app.get("/products", async (req, res) => {
-      const query = {};
-      const result = await productCollection.find(query).toArray();
+      const email = req.query.email;
+      const filter = { sellerEmail: email };
+      const result = await productCollection.find(filter).toArray();
+      res.send(result);
+    });
+
+    // delete a product data
+    app.delete("/products/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await productCollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    //update product advertise status
+    app.patch("/products-advertise/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: { advertised: true },
+      };
+      const result = await productCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    // get all advertised products
+    app.get("/advertised-products", async (req, res) => {
+      const filter = { advertised: true };
+      const result = await productCollection.find(filter).toArray();
+      res.send(result);
+    });
+
+    // Get specific category data
+    app.get("/categories/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { category_id: id };
+      const result = await productCollection.find(filter).toArray();
+      res.send(result);
+    });
+
+    // update product report
+    app.patch("/report/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: { report: true },
+      };
+      const result = await productCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    // get all reported products
+    app.get("/reported-items", async (req, res) => {
+      const filter = { report: true };
+      const result = await productCollection.find(filter).toArray();
+      res.send(result);
+    });
+
+    // get all seller data
+    app.get("/allseller", async (req, res) => {
+      const filter = { role: "seller" };
+      const result = await userCollection.find(filter).toArray();
+      res.send(result);
+    });
+
+    // get all buyer data
+    app.get("/allbuyer", async (req, res) => {
+      const filter = { role: "buyer" };
+      const result = await userCollection.find(filter).toArray();
+      res.send(result);
+    });
+
+    // delete a seller
+    app.delete("/user/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await userCollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    // Add booking data to database
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const result = await bookingCollection.insertOne(booking);
       res.send(result);
     });
   } finally {
