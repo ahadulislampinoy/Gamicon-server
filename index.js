@@ -133,7 +133,7 @@ async function run() {
     // Get specific category data
     app.get("/categories/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = { category_id: id };
+      const filter = { category_id: id, salesStatus: "available" };
       const result = await productCollection.find(filter).toArray();
       res.send(result);
     });
@@ -213,6 +213,34 @@ async function run() {
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const result = await paymentCollection.insertOne(payment);
+
+      res.send(result);
+    });
+
+    // update booking and product sales staus
+    app.patch("/update-sale-status", async (req, res) => {
+      const bookingId = req.query.bookingId;
+      const productId = req.query.productId;
+
+      // booking sale status
+      const bookingFilter = { _id: ObjectId(bookingId) };
+      const updateDocBooking = {
+        $set: { salesStatus: "sold" },
+      };
+      const bookingResult = await bookingCollection.updateOne(
+        bookingFilter,
+        updateDocBooking
+      );
+
+      // product sale status
+      const productFilter = { _id: ObjectId(productId) };
+      const updateDocProduct = {
+        $set: { salesStatus: "sold" },
+      };
+      const result = await productCollection.updateOne(
+        productFilter,
+        updateDocProduct
+      );
       res.send(result);
     });
 
