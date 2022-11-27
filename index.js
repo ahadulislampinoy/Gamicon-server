@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const app = express();
@@ -5,7 +6,6 @@ const cors = require("cors");
 const port = process.env.PORT || 5000;
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
 
 // Middlewares
 app.use(cors());
@@ -48,6 +48,18 @@ async function run() {
     const userCollection = client.db("Gamicon").collection("users");
     const productCollection = client.db("Gamicon").collection("products");
     const bookingCollection = client.db("Gamicon").collection("bookings");
+    const paymentCollection = client.db("Gamicon").collection("payments");
+
+    // Verify seller
+    const verifySeller = async (req, res, next) => {
+      const email = req.query.email;
+      const filter = { email: email };
+      const user = await userCollection.findOne(filter);
+      if (user?.role !== "seller") {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+      next();
+    };
 
     // Get categories data
     app.get("/categories", async (req, res) => {
@@ -78,7 +90,7 @@ async function run() {
     });
 
     // Add product data to database
-    app.post("/products", async (req, res) => {
+    app.post("/products", verifySeller, async (req, res) => {
       const product = req.body;
       const result = await productCollection.insertOne(product);
       res.send(result);
@@ -197,6 +209,13 @@ async function run() {
       res.send(result);
     });
 
+    // Add payements to db
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const result = await paymentCollection.insertOne(payment);
+      res.send(result);
+    });
+
     // Json web token
     app.get("/jwt", async (req, res) => {
       const email = req.query.email;
@@ -210,21 +229,21 @@ async function run() {
     });
 
     // Stripe
-    // app.post("/create-payment-intent", async (req, res) => {
-    //   const booking = req.body;
-    //   const price = booking.price;
-    //   const amount = price * 100;
+    app.post("/create-payment-intent", async (req, res) => {
+      const booking = req.body;
+      const price = parseInt(booking.price);
+      const amount = price * 100;
 
-    //   const paymentIntent = await stripe.paymentIntents.create({
-    //     amount: amount,
-    //     currency: "usd",
-    //     payment_method_types: ["card"],
-    //   });
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
 
-    //   res.send({
-    //     clientSecret: paymentIntent.client_secret,
-    //   });
-    // });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
   } finally {
   }
 }
