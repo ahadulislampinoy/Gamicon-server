@@ -3,6 +3,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
@@ -21,6 +22,25 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
 });
+
+// Verify json web token
+const verifyJwt = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  jwt.verify(token, process.env.JWT_TOKEN, function (err, decoded) {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden access" });
+    }
+    req.decoded = decoded;
+  });
+  next();
+};
 
 async function run() {
   try {
@@ -132,7 +152,7 @@ async function run() {
     });
 
     // get all buyer data
-    app.get("/allbuyer", async (req, res) => {
+    app.get("/allbuyer", verifyJwt, async (req, res) => {
       const filter = { role: "buyer" };
       const result = await userCollection.find(filter).toArray();
       res.send(result);
@@ -147,19 +167,64 @@ async function run() {
     });
 
     // Add booking data to database
-    app.post("/bookings", async (req, res) => {
+    app.post("/bookings", verifyJwt, async (req, res) => {
       const booking = req.body;
       const result = await bookingCollection.insertOne(booking);
       res.send(result);
     });
 
     // Get a specific user bookings data
-    app.get("/bookings", async (req, res) => {
+    app.get("/bookings", verifyJwt, async (req, res) => {
       const email = req.query.email;
+      const decodedEmail = req.decoded.email;
+      if (email !== decodedEmail) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
       const filter = { buyerEmail: email };
       const result = await bookingCollection.find(filter).toArray();
       res.send(result);
     });
+
+    // Verify user
+    app.patch("/verify-user", async (req, res) => {
+      const email = req.query.email;
+      console.log(email);
+      const filter = { email: email };
+      const updateDoc = {
+        $set: { verified: true },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // Json web token
+    app.get("/jwt", async (req, res) => {
+      const email = req.query.email;
+      const filter = { email: email };
+      const user = await userCollection.findOne(filter);
+      if (!user) {
+        return res.status(401).send({ message: "Unauthorized access" });
+      }
+      const token = jwt.sign(user, process.env.JWT_TOKEN, { expiresIn: "10d" });
+      res.send({ token });
+    });
+
+    // Stripe
+    // app.post("/create-payment-intent", async (req, res) => {
+    //   const booking = req.body;
+    //   const price = booking.price;
+    //   const amount = price * 100;
+
+    //   const paymentIntent = await stripe.paymentIntents.create({
+    //     amount: amount,
+    //     currency: "usd",
+    //     payment_method_types: ["card"],
+    //   });
+
+    //   res.send({
+    //     clientSecret: paymentIntent.client_secret,
+    //   });
+    // });
   } finally {
   }
 }
