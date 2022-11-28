@@ -113,7 +113,7 @@ async function run() {
     });
 
     //update product advertise status
-    app.patch("/products-advertise/:id", async (req, res) => {
+    app.patch("https://gamicon-server.vercel.app/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
       const updatedDoc = {
@@ -220,15 +220,14 @@ async function run() {
 
     // update booking and product sales staus
     app.patch("/update-sale-status", async (req, res) => {
-      const bookingId = req.query.bookingId;
       const productId = req.query.productId;
 
       // booking sale status
-      const bookingFilter = { _id: ObjectId(bookingId) };
+      const bookingFilter = { productId: productId };
       const updateDocBooking = {
         $set: { salesStatus: "sold" },
       };
-      const bookingResult = await bookingCollection.updateOne(
+      const bookingResult = await bookingCollection.updateMany(
         bookingFilter,
         updateDocBooking
       );
