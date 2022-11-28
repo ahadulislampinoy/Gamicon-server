@@ -119,6 +119,7 @@ async function run() {
       const updatedDoc = {
         $set: { advertised: true },
       };
+
       const result = await productCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
