@@ -113,7 +113,7 @@ async function run() {
     });
 
     //update product advertise status
-    app.patch("https://gamicon-server.vercel.app/:id", async (req, res) => {
+    app.patch("/products-advertise/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
       const updatedDoc = {
@@ -199,15 +199,28 @@ async function run() {
     });
 
     // Verify user
-    app.patch("/verify-user", async (req, res) => {
+    app.patch("/verify-user", verifyJwt, async (req, res) => {
       const email = req.query.email;
-      console.log(email);
-      const filter = { email: email };
-      const updateDoc = {
+
+      const userFilter = { email: email };
+      const userUpdateDoc = {
         $set: { verified: true },
       };
-      const result = await userCollection.updateOne(filter, updateDoc);
-      res.send(result);
+      const userResult = await userCollection.updateOne(
+        userFilter,
+        userUpdateDoc
+      );
+
+      // product
+      const productFilter = { sellerEmail: email };
+      const productUpdateDoc = {
+        $set: { sellerVerification: true },
+      };
+      const productResult = await productCollection.updateMany(
+        productFilter,
+        productUpdateDoc
+      );
+      res.send(userResult);
     });
 
     // Add payements to db
